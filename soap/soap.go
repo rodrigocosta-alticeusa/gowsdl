@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -514,11 +515,17 @@ func (s *Client) call(ctx context.Context, soapAction string, request, response 
 	}
 
 	var mmaBoundary string
-	if s.opts.mma{
+	if s.opts.mma {
 		mmaBoundary, err = getMmaHeader(res.Header.Get("Content-Type"))
 		if err != nil {
 			return err
 		}
+	}
+
+	// if the response code is 200 and content-type is html, it means it's an error
+	if res.StatusCode == http.StatusOK && strings.Contains(res.Header.Get("Content-Type"), "text/html") {
+		body, _ := ioutil.ReadAll(res.Body)
+		return fmt.Errorf("%s", string(body))
 	}
 
 	var dec SOAPDecoder
